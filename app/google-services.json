@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "978606352393",
+    "project_id": "swiftward-3733f",
+    "storage_bucket": "swiftward-3733f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:978606352393:android:9d10eccbfc71eabd4eb0d8",
+        "android_client_info": {
+          "package_name": "com.example.swiftward"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLggOt3RnvGKHa_xUfHnFmgooRZWT2EOw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

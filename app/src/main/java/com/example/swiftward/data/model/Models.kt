@@ -1,10 +1,21 @@
 package com.swiftward.data.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
 
 // ── Hospital ──────────────────────────────────────────────────────────────────
+enum class WardType(val displayName: String, val shortName: String) {
+    EMERGENCY  ("Emergency",          "Emergency"),
+    ICU        ("ICU",                "ICU"),
+    HDU        ("HDU / Step-down",    "HDU"),
+    GENERAL    ("General Ward",       "General"),
+    PEDIATRIC  ("Pediatric",          "Pediatric"),
+    MATERNITY  ("Maternity",          "Maternity"),
+    BURN       ("Burn Unit",          "Burns"),
+    ORTHOPEDIC ("Orthopedic",         "Ortho"),
+    CARDIAC    ("Cardiac / CICU",     "Cardiac"),
+    NEUROLOGY  ("Neurology",          "Neuro")
+}
+
 
 data class Hospital(
     val id: String,
@@ -15,11 +26,31 @@ data class Hospital(
     val phone: String,
     val isOpen24x7: Boolean,
     val wards: List<Ward>,
-    val distanceKm: Double = 0.0,       // computed locally
+    val distanceKm: Double = 0.0,
     val avgWaitMinutes: Int = 8
 ) {
     val totalFreeBeds: Int get() = wards.sumOf { it.freeBeds }
     val isFull: Boolean get() = totalFreeBeds == 0
+
+    // Most critical ward with available beds
+    val topAvailableWard: Ward?
+        get() = wards
+            .filter { it.freeBeds > 0 }
+            .minByOrNull { wardPriorityScore(it.type) }
+
+    private fun wardPriorityScore(type: WardType) = when (type) {
+        WardType.EMERGENCY   -> 1
+        WardType.ICU         -> 2
+        WardType.HDU         -> 3
+        WardType.GENERAL     -> 4
+        WardType.PEDIATRIC   -> 5
+        WardType.MATERNITY   -> 6
+        WardType.BURN        -> 7
+        WardType.ORTHOPEDIC  -> 8
+        WardType.CARDIAC     -> 9
+        WardType.NEUROLOGY   -> 10
+    }
+
 }
 
 data class Ward(
@@ -29,14 +60,7 @@ data class Ward(
     val freeBeds: Int
 )
 
-enum class WardType(val displayName: String, val colorHex: String) {
-    GENERAL("General ward", "#1D9E75"),
-    ICU("ICU", "#D85A30"),
-    HDU("HDU / Step-down", "#BA7517"),
-    PEDIATRIC("Pediatric", "#D4537E"),
-    MATERNITY("Maternity", "#7F77DD"),
-    EMERGENCY("Emergency", "#E24B4A")
-}
+
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -44,8 +68,8 @@ data class LoginRequest(
     val phone: String,
     val password: String
 )
-
 data class RegisterRequest(
+    @SerializedName("fullName") // This tells Retrofit to send "fullName" to the Node server
     val name: String,
     val phone: String,
     val password: String,
@@ -104,7 +128,8 @@ data class Booking(
     val status: BookingStatus,
     val assignedDoctor: String,
     val hospitalPhone: String,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val feePaid: Int
 )
 
 enum class BookingStatus { PENDING, CONFIRMED, PREPARING, ARRIVED, CANCELLED }
@@ -116,3 +141,59 @@ data class ApiResponse<T>(
     val data: T?,
     val message: String = ""
 )
+data class VerifyOtpRequest(
+    val phoneNumber: String,
+    val userOtp: String
+)
+
+data class ResendOtpRequest(
+    val phoneNumber: String
+)
+
+data class OtpResponse(
+    val success: Boolean,
+    val message: String
+)
+
+// ── Dual sort comparator ──────────────────────────────────────────────────────
+// Primary: distance ascending
+// Secondary: most critical available ward type ascending
+// Full hospitals always last
+object HospitalSorter {
+
+    fun sort(hospitals: List<Hospital>): List<Hospital> {
+        val (available, full) = hospitals.partition { !it.isFull }
+
+        val sorted = available.sortedWith(
+            compareBy<Hospital> { it.distanceKm }
+                .thenBy  { it.topAvailableWard?.let { w -> wardScore(w.type) } ?: 99 }
+                .thenByDescending { it.totalFreeBeds }
+        )
+
+        return sorted + full.sortedBy { it.distanceKm }
+    }
+
+    fun sortByWardFirst(hospitals: List<Hospital>): List<Hospital> {
+        val (available, full) = hospitals.partition { !it.isFull }
+        val sorted = available.sortedWith(
+            compareBy<Hospital> { it.topAvailableWard?.let { w -> wardScore(w.type) } ?: 99 }
+                .thenBy { it.distanceKm }
+                .thenByDescending { it.totalFreeBeds }
+        )
+        return sorted + full.sortedBy { it.distanceKm }
+    }
+
+    private fun wardScore(type: WardType) = when (type) {
+        WardType.EMERGENCY   -> 1
+        WardType.ICU         -> 2
+        WardType.HDU         -> 3
+        WardType.GENERAL     -> 4
+        WardType.PEDIATRIC   -> 5
+        WardType.MATERNITY   -> 6
+        WardType.BURN        -> 7
+        WardType.ORTHOPEDIC  -> 8
+        WardType.CARDIAC     -> 9
+        WardType.NEUROLOGY   -> 10
+    }
+}
+
