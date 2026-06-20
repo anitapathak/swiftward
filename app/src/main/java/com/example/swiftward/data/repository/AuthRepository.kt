@@ -44,8 +44,12 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Result.Success(response.body()!!))
             } else {
-                // 🚨 IF THIS EMITS AN ERROR, YOUR VIEWMODEL UPDATES THE STATE
-                emit(Result.Error(response.message() ?: "Registration failed"))
+                // Read the real backend JSON message (e.g. "Phone number or Email already
+                // registered") instead of the raw HTTP status word like "Forbidden"/"Bad Request".
+                val errorMsg = response.errorBody()?.string()
+                    ?: response.body()?.message
+                    ?: "Registration failed"
+                emit(Result.Error(errorMsg))
             }
         } catch (e: Exception) {
             // 🚨 IF THERE IS A NETWORK/ROUTING ERROR, IT MUST BE CAUGHT AND EMITTED HERE!

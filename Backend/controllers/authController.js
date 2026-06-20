@@ -63,21 +63,23 @@ exports.register = async (req, res) => {
 
         await user.save();
 
-        // 🚨 CRITICAL FIX: Wrapped inside an isolated try-catch sandbox environment.
-        // If Resend throws an API error, it won't crash the endpoint or send a 403 back to Android.
+        // 🔑 DEV: ALWAYS print the OTP to the console so you can verify even when
+        // Resend silently accepts the request but never actually delivers the email.
+        console.log(`\n💡 [DEV OTP] ${phone} -> ${generatedOtp}  (valid 10 min)\n`);
+
+        // Email send is best-effort: if Resend throws it won't crash the endpoint.
         try {
             await resend.emails.send({
                 from: 'onboarding@resend.dev',
-                to: email, 
+                to: email,
                 subject: 'SwiftWard OTP Verification Code',
                 html: `<h3>Welcome to SwiftWard!</h3>
                        <p>Your 6-digit OTP code is: <strong>${generatedOtp}</strong></p>
                        <p>This code will expire in 10 minutes.</p>`
             });
-            console.log(`\n📨 OTP Email dispatched safely via Resend architecture to ${email}`);
+            console.log(`📨 OTP email dispatched via Resend to ${email}`);
         } catch (emailErr) {
-            console.error("⚠️ Resend API warning (likely unverified sandbox restrictions):", emailErr.message);
-            console.log(`\n💡 [DEVELOPER TESTING KEY] -> Manual OTP override for screen insertion: ${generatedOtp}\n`);
+            console.error("⚠️ Resend failed (use the [DEV OTP] above):", emailErr.message);
         }
 
         // Return unified response layout containing explicit success marker to map Kotlin mapping cleanly
@@ -147,6 +149,9 @@ exports.resendOtp = async (req, res) => {
         user.otpExpires = Date.now() + 600000;
         await user.save();
 
+        // 🔑 DEV: always print the resent OTP to the console.
+        console.log(`\n💡 [DEV OTP - RESEND] ${phone} -> ${newOtp}  (valid 10 min)\n`);
+
         // Send replacement verification code token via email routing pipelines
         try {
             await resend.emails.send({
@@ -155,10 +160,9 @@ exports.resendOtp = async (req, res) => {
                 subject: 'Your New SwiftWard OTP Code',
                 html: `<p>Your new tracking OTP code validation digit is: <strong>${newOtp}</strong></p>`
             });
-            console.log(`\n🔄 Resent OTP email directly via tracking channels to ${user.email}`);
+            console.log(`🔄 Resent OTP email to ${user.email}`);
         } catch (emailErr) {
-            console.error("⚠️ Resend Resend retry exception caught:", emailErr.message);
-            console.log(`\n💡 [DEVELOPER TESTING KEY] -> Resend Manual OTP override: ${newOtp}\n`);
+            console.error("⚠️ Resend failed (use the [DEV OTP - RESEND] above):", emailErr.message);
         }
 
         res.status(200).json({ 
