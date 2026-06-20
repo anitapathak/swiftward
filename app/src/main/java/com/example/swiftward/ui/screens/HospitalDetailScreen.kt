@@ -85,7 +85,7 @@ fun HospitalDetailScreen(
 
             // --- Action Button ---
             Button(
-                onClick = { onEmergencyBook(hospitalId) },
+                onClick = { onEmergencyBook(hospitalId) }, // Just pass the raw ID (e.g., "h1")
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)

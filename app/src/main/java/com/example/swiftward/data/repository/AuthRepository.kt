@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
 @Singleton
 class AuthRepository @Inject constructor(
     private val api: SwiftWardApi,
@@ -27,67 +26,74 @@ class AuthRepository @Inject constructor(
                 session.saveSession(auth.token, auth.user.id, auth.user.name, auth.user.phone)
                 emit(Result.Success(auth))
             } else {
-                emit(Result.Error(resp.body()?.message ?: "Login Failed"))
+                // 💡 Extract the true backend message from errorBody if body is null
+                val errorMsg = resp.errorBody()?.string() ?: resp.body()?.message ?: "Login Failed"
+                emit(Result.Error(errorMsg))
             }
         } catch (e: Exception) {
-            emit(Result.Error("Network Error: ${e.message}"))
+            emit(Result.Error("Network Error: ${e.localizedMessage ?: e.message}"))
         }
     }
 
     // --- REGISTER ---
-    fun register(name: String, phone: String, password: String): Flow<Result<AuthResponse>> = flow {
+    fun register(name: String, phone: String, email: String, password: String) = flow {
         emit(Result.Loading)
         try {
-            val resp = api.register(RegisterRequest(name, phone, password))
-            if (resp.isSuccessful && resp.body()?.success == true) {
-                val auth = resp.body()!!.data!!
-                session.saveSession(auth.token, auth.user.id, auth.user.name, auth.user.phone)
-                emit(Result.Success(auth))
+            val response = api.register(RegisterRequest(name, phone, email, password))
+
+            if (response.isSuccessful && response.body() != null) {
+                emit(Result.Success(response.body()!!))
             } else {
-                emit(Result.Error(resp.body()?.message ?: "Registration Failed"))
+                // 🚨 IF THIS EMITS AN ERROR, YOUR VIEWMODEL UPDATES THE STATE
+                emit(Result.Error(response.message() ?: "Registration failed"))
             }
         } catch (e: Exception) {
-            emit(Result.Error("Network Error: ${e.message}"))
+            // 🚨 IF THERE IS A NETWORK/ROUTING ERROR, IT MUST BE CAUGHT AND EMITTED HERE!
+            emit(Result.Error(e.localizedMessage ?: "Check your internet connection"))
         }
     }
 
     // --- SEND/RESEND OTP ---
-    // Uses ResendOtpRequest which maps to your Node.js backend
-    // Inside AuthRepository.kt
     suspend fun sendOtp(phone: String): Flow<Result<Unit>> = flow {
         emit(Result.Loading)
         try {
-            // Change "phone" to "phoneNumber" if your Node.js uses req.body.phoneNumber
             val response = api.sendOtp(mapOf("phoneNumber" to phone))
-
-            if (response.isSuccessful) emit(Result.Success(Unit))
-            else emit(Result.Error("Failed to send OTP"))
+            if (response.isSuccessful) {
+                emit(Result.Success(Unit))
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Failed to send OTP"
+                emit(Result.Error(errorMsg))
+            }
         } catch (e: Exception) {
-            emit(Result.Error(e.message ?: "Network Error"))
+            emit(Result.Error(e.localizedMessage ?: e.message ?: "Network Error"))
         }
     }
 
     // --- VERIFY OTP ---
-    // Matches your Node.js: const { phoneNumber, userOtp } = req.body;
-    fun verifyOtp(phone: String, otp: String): Flow<Result<OtpResponse>> = flow {
+    // ── VERIFY OTP ──
+// Changed the Flow type parameter from OtpResponse to AuthResponse
+    fun verifyOtp(phone: String, otp: String): Flow<Result<AuthResponse>> = flow {
         emit(Result.Loading)
         try {
             val resp = api.verifyOtp(VerifyOtpRequest(phoneNumber = phone, userOtp = otp))
-            val body = resp.body();
-            if (resp.isSuccessful && resp.body()?.success == true) {
-                // If verification is successful, you might want to save a temporary token
-                // or proceed to profile completion
-                emit(Result.Success(body))
+            val body = resp.body()
+
+            if (resp.isSuccessful && body?.success == true) {
+                // Extract the actual inner user data object safely
+                val authData = body.data!!
+
+                // If you want to automatically log them in on successful OTP verification:
+                session.saveSession(authData.token, authData.user.id, authData.user.name, authData.user.phone)
+
+                emit(Result.Success(authData))
             } else {
-                emit(Result.Error(resp.body()?.message ?: "Invalid OTP code"))
+                val errorMsg = resp.errorBody()?.string() ?: body?.message ?: "Invalid OTP code"
+                emit(Result.Error(errorMsg))
             }
         } catch (e: Exception) {
-            emit(Result.Error("Verification failed: ${e.message}"))
+            emit(Result.Error("Verification failed: ${e.localizedMessage ?: e.message}"))
         }
     }
-
-    private fun emit(value: Result.Success<ApiResponse<AuthResponse>?>) {}
-
 
     suspend fun logout() = session.clearSession()
 }

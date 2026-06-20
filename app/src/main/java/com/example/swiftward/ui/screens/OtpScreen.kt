@@ -23,7 +23,7 @@ import com.example.swiftward.ui.viewmodel.OtpViewModel
 @Composable
 fun OtpScreen(
     navController: NavHostController,
-    phoneNumber: String,
+    email: String,
     viewModel: OtpViewModel = hiltViewModel() // Injected ViewModel
 ) {
     // State for the 6 OTP digits
@@ -77,11 +77,16 @@ fun OtpScreen(
                     tint = Color(0xFF1A3668)
                 )
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Verify your number", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text("We sent a 6-digit code to", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
-            Text("+977 $phoneNumber", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("Verify your account", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+
+            // Displays the email passed down cleanly via navigation
+            Text(
+                text = "We sent a 6-digit code to\n$email",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -128,13 +133,13 @@ fun OtpScreen(
                     if (fullOtp.length < 6) {
                         otpError = "Please enter all 6 digits"
                     } else {
-                        // Logic: Verify OTP then Navigate
+                        // 👈 Note: This routes straight to dashboard on local UI check.
+                        // If you add backend verification methods to OtpViewModel, you would trigger them here.
                         navController.navigate("dashboard") { popUpTo("login") { inclusive = true } }
-
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3668)), // Changed to Blue for visibility
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3668)),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Verify & continue", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -144,7 +149,7 @@ fun OtpScreen(
 
             // --- Resend Logic ---
             if (canResend) {
-                TextButton(onClick = { viewModel.resendOtp(phoneNumber) }) {
+                TextButton(onClick = { viewModel.resendOtp(email) }) {
                     Text("Didn't receive? Resend OTP", color = Color(0xFF1A3668), fontWeight = FontWeight.Bold)
                 }
             } else {

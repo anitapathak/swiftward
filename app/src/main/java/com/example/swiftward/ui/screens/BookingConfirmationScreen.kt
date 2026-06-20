@@ -21,7 +21,8 @@ import com.swiftward.ui.theme.Navy
 @Composable
 fun BookingConfirmScreen(
     bookingId: String,               // Passed from NavGraph
-    onBackToHospitals: () -> Unit    // Navigates back to the main list
+    onBackToHospitals: () -> Unit,    // Navigates back to the main list
+    transactionId: String
 ) {
     Column(
         modifier = Modifier

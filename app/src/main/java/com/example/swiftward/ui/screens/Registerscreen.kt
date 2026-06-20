@@ -17,12 +17,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import com.example.swiftward.ui.viewmodel.AuthViewModel
 
 @Composable
 fun RegisterScreen(
     navController: NavHostController,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     // --- State Management ---
     var fullName by remember { mutableStateOf("") }
@@ -31,7 +34,27 @@ fun RegisterScreen(
     var passwordValue by remember { mutableStateOf("") }
     var confirmPasswordValue by remember { mutableStateOf("") }
     var isAgreed by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Local validation error message holder (Frontend only)
+    var localValidationError by remember { mutableStateOf<String?>(null) }
+
+    // Observe unified backend state (Loading, Success, Error)
+    val state by viewModel.state.collectAsState()
+
+    // Listen for backend registration success, then trigger navigation
+    LaunchedEffect(state.success) {
+        if (state.success) {
+            val cleanEmail = emailValue.trim()
+            viewModel.resetSuccess() // Reset success flag in ViewModel
+            navController.navigate("otp_screen/$cleanEmail") {
+                // Clear registration page out of backstack history
+                popUpTo("register") { inclusive = true }
+            }
+        }
+    }
+
+    // Determine what error message string to render (Prefer local validation, fallback to backend)
+    val displayError = localValidationError ?: state.error
 
     val fieldBg = Color(0xFFF7F4F0)
 
@@ -40,7 +63,7 @@ fun RegisterScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // --- Dark Blue Header (Matches Screenshot) ---
+        // --- Dark Blue Header ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -78,7 +101,7 @@ fun RegisterScreen(
 
             // Inputs
             RegisterLabel("FULL NAME")
-            CustomTextField(fullName, { fullName = it }, "Your full name")
+            CustomTextField(fullName, { fullName = it; localValidationError = null }, "Your full name")
 
             RegisterLabel("PHONE NUMBER")
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -91,23 +114,22 @@ fun RegisterScreen(
                     colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = fieldBg)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                // Note: weight(1f) is valid here because it's inside a Row
                 CustomTextField(
                     value = phoneValue,
-                    onValueChange = { phoneValue = it },
+                    onValueChange = { phoneValue = it; localValidationError = null },
                     placeholder = "98XXXXXXXX",
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            RegisterLabel("EMAIL (optional)")
-            CustomTextField(emailValue, { emailValue = it }, "your@email.com")
+            RegisterLabel("EMAIL")
+            CustomTextField(emailValue, { emailValue = it; localValidationError = null }, "your@email.com")
 
             RegisterLabel("PASSWORD")
-            CustomTextField(passwordValue, { passwordValue = it }, "Min 8 characters", isPassword = true)
+            CustomTextField(passwordValue, { passwordValue = it; localValidationError = null }, "Min 8 characters", isPassword = true)
 
             RegisterLabel("CONFIRM PASSWORD")
-            CustomTextField(confirmPasswordValue, { confirmPasswordValue = it }, "Re-enter password", isPassword = true)
+            CustomTextField(confirmPasswordValue, { confirmPasswordValue = it; localValidationError = null }, "Re-enter password", isPassword = true)
 
             // Terms Checkbox
             Row(
@@ -116,16 +138,16 @@ fun RegisterScreen(
             ) {
                 Checkbox(
                     checked = isAgreed,
-                    onCheckedChange = { isAgreed = it },
+                    onCheckedChange = { isAgreed = it; localValidationError = null },
                     colors = CheckboxDefaults.colors(checkedColor = Color(0xFF1A3668))
                 )
                 Text("I agree to the Terms of Service and Privacy Policy", fontSize = 12.sp)
             }
 
-            // Error Message Pop-out
-            if (errorMessage != null) {
+            // Consolidated Error Message Field Display
+            if (displayError != null) {
                 Text(
-                    text = errorMessage!!,
+                    text = displayError,
                     color = Color.Red,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 8.dp)
@@ -138,22 +160,29 @@ fun RegisterScreen(
             Button(
                 onClick = {
                     when {
-                        fullName.isBlank() || phoneValue.isBlank() || passwordValue.isBlank() -> {
-                            errorMessage = "Required fields cannot be empty"
+                        fullName.isBlank() || phoneValue.isBlank() || emailValue.isBlank() || passwordValue.isBlank() -> {
+                            localValidationError = "Required fields cannot be empty"
+                        }
+                        (!emailValue.contains("@") || !emailValue.contains(".")) -> {
+                            localValidationError = "Please enter a valid email address"
                         }
                         passwordValue.length < 8 -> {
-                            errorMessage = "Password must be at least 8 characters"
+                            localValidationError = "Password must be at least 8 characters"
                         }
                         passwordValue != confirmPasswordValue -> {
-                            errorMessage = "Passwords do not match"
+                            localValidationError = "Passwords do not match"
                         }
                         !isAgreed -> {
-                            errorMessage = "You must agree to the terms"
+                            localValidationError = "You must agree to the terms"
                         }
                         else -> {
-                            errorMessage = null
-                            // Pass the number to the OTP screen
-                            navController.navigate("otp_screen/$phoneValue")
+                            localValidationError = null
+                            viewModel.register(
+                                name = fullName.trim(),
+                                phone = phoneValue.trim(),
+                                email = emailValue.trim(),
+                                password = passwordValue
+                            )
                         }
                     }
                 },
@@ -162,9 +191,14 @@ fun RegisterScreen(
                     .height(56.dp)
                     .border(1.dp, Color.LightGray, RoundedCornerShape(12.dp)),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !state.isLoading
             ) {
-                Text("Create account", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                if (state.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF1A3668))
+                } else {
+                    Text("Create account", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             // Footer

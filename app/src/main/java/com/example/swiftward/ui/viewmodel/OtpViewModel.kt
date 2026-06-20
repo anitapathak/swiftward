@@ -38,7 +38,7 @@ class OtpViewModel @Inject constructor(private val api: SwiftWardApi) : ViewMode
         }
     }
 
-    fun resendOtp(mobileNumber: String) {
+    fun resendOtp(email: String) {
         // Here you would call your actual SMS API service
         startTimer()
     }

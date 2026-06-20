@@ -1,6 +1,5 @@
 package com.example.swiftward.ui.navigation
 
-
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -33,7 +32,7 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // 2. Map Screen (ADDED & CONNECTED)
+        // 2. Map Screen
         composable(Screen.map.route) {
             MapScreen(
                 onHospitalClick = { id ->
@@ -119,19 +118,40 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // 7. Booking Confirmation
+        // 7. Booking Confirmation Destination
         composable(
-            route = Screen.BookingConfirm.route,
-            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+            route = "confirmation_route/{bookingId}/{transactionId}",
+            arguments = listOf(
+                navArgument("bookingId") { type = NavType.StringType },
+                navArgument("transactionId") { type = NavType.StringType }
+            )
         ) { backStackEntry ->
             val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+
             BookingConfirmScreen(
                 bookingId = bookingId,
+                transactionId = transactionId,
                 onBackToHospitals = {
                     navController.navigate(Screen.Hospitals.route) {
                         popUpTo(Screen.Hospitals.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // 🛠️ 8. OTP SCREEN DESTINATION (Accepts Email Only)
+        composable(
+            route = "otp_screen/{email}",
+            arguments = listOf(
+                navArgument("email") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email") ?: ""
+
+            OtpScreen(
+                navController = navController,
+                email = email
             )
         }
     }

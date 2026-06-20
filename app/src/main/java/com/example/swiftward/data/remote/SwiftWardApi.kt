@@ -7,25 +7,20 @@ import retrofit2.http.*
 interface SwiftWardApi {
 
     // ── Auth ──────────────────────────────────────────────────────────────────
-
-    @POST("api/login")
+    @POST("api/auth/login") // 👈 Change from "api/login"
     suspend fun login(@Body request: LoginRequest): Response<ApiResponse<AuthResponse>>
 
-    @POST("api/register")
+    @POST("register") // 👈 Change from "api/register"
     suspend fun register(@Body request: RegisterRequest): Response<ApiResponse<AuthResponse>>
 
-    @POST("api/send-otp")
+    @POST("api/auth/send-otp") // 👈 Verify if this matches your backend auth router
     suspend fun sendOtp(@Body body: Map<String, String>): Response<ApiResponse<Unit>>
 
-    @POST("api/resend-otp")
-    suspend fun resendOtp(
-        @Body request: ResendOtpRequest
-    ): Response<OtpResponse>
+    @POST("api/auth/resend-otp")
+    suspend fun resendOtp(@Body request: ResendOtpRequest): Response<OtpResponse>
 
-    @POST("api/verify-otp")
-    suspend fun verifyOtp(
-        @Body request: VerifyOtpRequest
-    ): Response<ApiResponse<AuthResponse>>
+    @POST("api/auth/verify-otp")
+    suspend fun verifyOtp(@Body request: VerifyOtpRequest): Response<ApiResponse<AuthResponse>>
 
 
     // ── Hospitals ─────────────────────────────────────────────────────────────

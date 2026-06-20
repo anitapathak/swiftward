@@ -72,8 +72,9 @@ data class RegisterRequest(
     @SerializedName("fullName") // This tells Retrofit to send "fullName" to the Node server
     val name: String,
     val phone: String,
-    val password: String,
-    val email: String = ""
+    val email: String,
+    val password: String
+
 )
 
 data class OtpRequest(

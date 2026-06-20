@@ -56,9 +56,9 @@ class AuthViewModel @Inject constructor(
     }
 
     // --- REGISTRATION LOGIC ---
-    fun register(name: String, phone: String, password: String) {
+    fun register(name: String, phone: String, email: String, password: String) {
         viewModelScope.launch {
-            repo.register(name, phone, password).collect { result ->
+            repo.register(name, phone, email, password).collect { result ->
                 when (result) {
                     is Result.Loading -> _state.update { it.copy(isLoading = true, error = null) }
                     is Result.Success -> {
@@ -71,7 +71,6 @@ class AuthViewModel @Inject constructor(
             }
         }
     }
-
     // --- OTP LOGIC ---
     fun startTimer() {
         _state.update { it.copy(timerValue = 60, canResend = false) }
