@@ -7,19 +7,22 @@ import retrofit2.http.*
 interface SwiftWardApi {
 
     // ── Auth ──────────────────────────────────────────────────────────────────
-    @POST("api/auth/login") // 👈 Change from "api/login"
+    // Backend mounts authRoutes at "/api", so every path below is "api/<route>".
+    @POST("api/login")
     suspend fun login(@Body request: LoginRequest): Response<ApiResponse<AuthResponse>>
 
-    @POST("register") // 👈 Change from "api/register"
+    @POST("api/register")
     suspend fun register(@Body request: RegisterRequest): Response<ApiResponse<AuthResponse>>
 
-    @POST("api/auth/send-otp") // 👈 Verify if this matches your backend auth router
+    // Backend has no dedicated send-otp route (register sends the first OTP);
+    // re-sending uses the same resend-otp endpoint.
+    @POST("api/resend-otp")
     suspend fun sendOtp(@Body body: Map<String, String>): Response<ApiResponse<Unit>>
 
-    @POST("api/auth/resend-otp")
+    @POST("api/resend-otp")
     suspend fun resendOtp(@Body request: ResendOtpRequest): Response<OtpResponse>
 
-    @POST("api/auth/verify-otp")
+    @POST("api/verify-otp")
     suspend fun verifyOtp(@Body request: VerifyOtpRequest): Response<ApiResponse<AuthResponse>>
 
 

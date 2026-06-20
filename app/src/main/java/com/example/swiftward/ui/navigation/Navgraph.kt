@@ -140,17 +140,20 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // 🛠️ 8. OTP SCREEN DESTINATION (Accepts Email Only)
+        // 🛠️ 8. OTP SCREEN DESTINATION (phone verifies the code, email is shown to the user)
         composable(
-            route = "otp_screen/{email}",
+            route = "otp_screen/{phone}/{email}",
             arguments = listOf(
+                navArgument("phone") { type = NavType.StringType },
                 navArgument("email") { type = NavType.StringType }
             )
         ) { backStackEntry ->
+            val phone = backStackEntry.arguments?.getString("phone") ?: ""
             val email = backStackEntry.arguments?.getString("email") ?: ""
 
             OtpScreen(
                 navController = navController,
+                phone = phone,
                 email = email
             )
         }

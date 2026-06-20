@@ -18,21 +18,40 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import com.example.swiftward.ui.viewmodel.OtpViewModel
+import com.example.swiftward.ui.navigation.Screen
+import com.example.swiftward.ui.viewmodel.AuthViewModel
 
 @Composable
 fun OtpScreen(
     navController: NavHostController,
+    phone: String,
     email: String,
-    viewModel: OtpViewModel = hiltViewModel() // Injected ViewModel
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     // State for the 6 OTP digits
     val otpValues = remember { mutableStateListOf("", "", "", "", "", "") }
-    var otpError by remember { mutableStateOf<String?>(null) }
+    var localError by remember { mutableStateOf<String?>(null) }
 
-    // Observe timer and resend state from ViewModel
-    val timerValue by viewModel.timerValue.collectAsState()
-    val canResend by viewModel.canResend.collectAsState()
+    // Backend-driven state (timer, loading, error, success)
+    val state by viewModel.state.collectAsState()
+
+    // Prefer a local validation message, otherwise show the backend error
+    val otpError = localError ?: state.error
+
+    // Start the resend countdown when the screen first appears
+    LaunchedEffect(Unit) {
+        viewModel.startTimer()
+    }
+
+    // A verified user is also signed in (verify-otp returns a token), so go to the hospital list
+    LaunchedEffect(state.success) {
+        if (state.success) {
+            viewModel.resetSuccess()
+            navController.navigate(Screen.Hospitals.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -101,7 +120,7 @@ fun OtpScreen(
                         onValueChange = { newValue ->
                             if (newValue.length <= 1 && newValue.all { it.isDigit() }) {
                                 otpValues[index] = newValue
-                                otpError = null
+                                localError = null
                             }
                         },
                         modifier = Modifier.width(45.dp).height(56.dp),
@@ -121,7 +140,7 @@ fun OtpScreen(
             }
 
             if (otpError != null) {
-                Text(text = otpError!!, color = Color.Red, fontSize = 14.sp, modifier = Modifier.padding(top = 16.dp))
+                Text(text = otpError, color = Color.Red, fontSize = 14.sp, modifier = Modifier.padding(top = 16.dp))
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -131,30 +150,35 @@ fun OtpScreen(
                 onClick = {
                     val fullOtp = otpValues.joinToString("")
                     if (fullOtp.length < 6) {
-                        otpError = "Please enter all 6 digits"
+                        localError = "Please enter all 6 digits"
                     } else {
-                        // 👈 Note: This routes straight to dashboard on local UI check.
-                        // If you add backend verification methods to OtpViewModel, you would trigger them here.
-                        navController.navigate("dashboard") { popUpTo("login") { inclusive = true } }
+                        localError = null
+                        // Verify against the backend using the phone the account was registered with
+                        viewModel.verifyOtp(phone, fullOtp)
                     }
                 },
+                enabled = !state.isLoading,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3668)),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Verify & continue", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                if (state.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Text("Verify & continue", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // --- Resend Logic ---
-            if (canResend) {
-                TextButton(onClick = { viewModel.resendOtp(email) }) {
+            if (state.canResend) {
+                TextButton(onClick = { viewModel.resendOtp(phone) }) {
                     Text("Didn't receive? Resend OTP", color = Color(0xFF1A3668), fontWeight = FontWeight.Bold)
                 }
             } else {
                 Text(
-                    text = "Resend in 0:${timerValue.toString().padStart(2, '0')}",
+                    text = "Resend in 0:${state.timerValue.toString().padStart(2, '0')}",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )

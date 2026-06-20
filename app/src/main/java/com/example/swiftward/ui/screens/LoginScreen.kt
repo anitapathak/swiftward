@@ -20,22 +20,38 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.swiftward.ui.navigation.Screen
+import com.example.swiftward.ui.viewmodel.AuthViewModel
 
 @Composable
 fun LoginScreen(
     navController: NavHostController,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     // --- State ---
     var phoneValue by remember { mutableStateOf("") }
     var passwordValue by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var localError by remember { mutableStateOf<String?>(null) }
 
-    // Mock Validation Data
-    val correctPhone = "9800000000"
-    val correctPassword = "password123"
+    // Backend-driven state (loading / error / success)
+    val state by viewModel.state.collectAsState()
+
+    // Prefer a local validation message, otherwise show the backend error
+    val errorMessage = localError ?: state.error
+
+    // On successful login the repository has already saved the session.
+    // Clear the auth screens off the backstack and go to the hospital list.
+    LaunchedEffect(state.success) {
+        if (state.success) {
+            viewModel.resetSuccess()
+            navController.navigate(Screen.Hospitals.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     val fieldBackgroundColor = Color(0xFFF7F4F0) // Matching the off-white/cream fields in screenshot
 
@@ -99,7 +115,7 @@ fun LoginScreen(
             // Phone Number Input
             OutlinedTextField(
                 value = phoneValue,
-                onValueChange = { phoneValue = it; errorMessage = null },
+                onValueChange = { phoneValue = it; localError = null },
                 placeholder = { Text("98XXXXXXXX") },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
@@ -113,7 +129,7 @@ fun LoginScreen(
         Text("PASSWORD", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray)
         OutlinedTextField(
             value = passwordValue,
-            onValueChange = { passwordValue = it; errorMessage = null },
+            onValueChange = { passwordValue = it; localError = null },
             placeholder = { Text("••••••••") },
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             shape = RoundedCornerShape(12.dp),
@@ -147,12 +163,14 @@ fun LoginScreen(
         // --- Sign In Button ---
         Button(
             onClick = {
-                if (phoneValue == correctPhone && passwordValue == correctPassword) {
-                    navController.navigate(Screen.Otp.route)
+                if (phoneValue.isBlank() || passwordValue.isBlank()) {
+                    localError = "Please enter your phone and password"
                 } else {
-                    errorMessage = "Incorrect no. or password"
+                    localError = null
+                    viewModel.login(phoneValue.trim(), passwordValue)
                 }
             },
+            enabled = !state.isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
@@ -160,7 +178,11 @@ fun LoginScreen(
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Sign in", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            if (state.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF1A3668))
+            } else {
+                Text("Sign in", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
         // --- Divider ---

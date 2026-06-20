@@ -57,7 +57,7 @@ class AuthRepository @Inject constructor(
     suspend fun sendOtp(phone: String): Flow<Result<Unit>> = flow {
         emit(Result.Loading)
         try {
-            val response = api.sendOtp(mapOf("phoneNumber" to phone))
+            val response = api.sendOtp(mapOf("phone" to phone))
             if (response.isSuccessful) {
                 emit(Result.Success(Unit))
             } else {

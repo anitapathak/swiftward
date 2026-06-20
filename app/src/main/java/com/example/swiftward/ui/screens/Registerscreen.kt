@@ -45,10 +45,12 @@ fun RegisterScreen(
     LaunchedEffect(state.success) {
         if (state.success) {
             val cleanEmail = emailValue.trim()
+            val cleanPhone = phoneValue.trim()
             viewModel.resetSuccess() // Reset success flag in ViewModel
-            navController.navigate("otp_screen/$cleanEmail") {
+            // Pass phone (used to verify the OTP) and email (shown to the user)
+            navController.navigate("otp_screen/$cleanPhone/$cleanEmail") {
                 // Clear registration page out of backstack history
-                popUpTo("register") { inclusive = true }
+                popUpTo("register_route") { inclusive = true }
             }
         }
     }

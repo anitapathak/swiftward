@@ -69,7 +69,7 @@ data class LoginRequest(
     val password: String
 )
 data class RegisterRequest(
-    @SerializedName("fullName") // This tells Retrofit to send "fullName" to the Node server
+    @SerializedName("name") // Backend destructures req.body.name
     val name: String,
     val phone: String,
     val email: String,
@@ -143,11 +143,15 @@ data class ApiResponse<T>(
     val message: String = ""
 )
 data class VerifyOtpRequest(
+    // Backend reads req.body.phone and req.body.otp
+    @SerializedName("phone")
     val phoneNumber: String,
+    @SerializedName("otp")
     val userOtp: String
 )
 
 data class ResendOtpRequest(
+    @SerializedName("phone")
     val phoneNumber: String
 )
 

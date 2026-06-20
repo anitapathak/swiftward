@@ -60,7 +60,6 @@ fun SwiftWardAppNavigation(sessionManager: SessionManager) {
 
             // 2. Login Screen
             composable(Screen.Login.route) {
-                val authViewModel: AuthViewModel = hiltViewModel()
                 LoginScreen(
                     navController = navController,
                     onNavigateToRegister = { navController.navigate("register_route") }
@@ -77,13 +76,17 @@ fun SwiftWardAppNavigation(sessionManager: SessionManager) {
 
             // 4. OTP Screen
             composable(
-                route = "otp_screen/{email}",
-                arguments = listOf(navArgument("email") { type = NavType.StringType })
+                route = "otp_screen/{phone}/{email}",
+                arguments = listOf(
+                    navArgument("phone") { type = NavType.StringType },
+                    navArgument("email") { type = NavType.StringType }
+                )
             ) { backStackEntry ->
+                val phone = backStackEntry.arguments?.getString("phone") ?: ""
                 val email = backStackEntry.arguments?.getString("email") ?: ""
 
-                // This passes the email parameter into the updated OtpScreen
-                OtpScreen(navController = navController, email = email)
+                // phone verifies the OTP against the backend; email is shown to the user
+                OtpScreen(navController = navController, phone = phone, email = email)
             }
 
             // 5. Main Browser / Hospital List

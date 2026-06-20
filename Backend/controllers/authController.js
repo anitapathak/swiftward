@@ -1,9 +1,27 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 
 // Initialize Resend with your API Key
 const resend = new Resend('re_2JiDzXZy_8DnvG8WMgnEGW1uLpfx6oyfC');
+
+// Secret used to sign auth tokens. In production load this from an env var.
+const JWT_SECRET = process.env.JWT_SECRET || 'swiftward_dev_secret_change_me';
+
+// Builds the exact JSON shape the Android app expects: { token, user: {...} }
+function buildAuthData(user) {
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
+    return {
+        token,
+        user: {
+            id: user._id,
+            name: user.fullName,
+            phone: user.phone,
+            email: user.email
+        }
+    };
+}
 
 // ==========================================
 // 1. REGISTER: Create user and send OTP
@@ -101,9 +119,11 @@ exports.verifyOtp = async (req, res) => {
 
         console.log(`\n✅ Account associated with mobile target ${phone} successfully verified!\n`);
 
-        res.status(200).json({ 
-            success: true, 
-            message: "Account verified successfully!" 
+        // Issue a token on successful verification so the app can sign the user straight in
+        res.status(200).json({
+            success: true,
+            message: "Account verified successfully!",
+            data: buildAuthData(user)
         });
     } catch (err) {
         console.error("Verification endpoint matching exception error:", err);
@@ -171,11 +191,11 @@ exports.login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ success: false, message: "Incorrect number or password" });
 
-        res.status(200).json({ 
+        // Return the { success, message, data: { token, user } } envelope the app maps into ApiResponse<AuthResponse>
+        res.status(200).json({
             success: true,
-            message: "Login successful", 
-            userId: user._id,
-            fullName: user.fullName 
+            message: "Login successful",
+            data: buildAuthData(user)
         });
     } catch (err) {
         console.error("Login verification stream module tracking failure:", err);
