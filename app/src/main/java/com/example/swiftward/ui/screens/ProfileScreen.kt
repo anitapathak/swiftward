@@ -23,7 +23,10 @@ import com.swiftward.ui.theme.Navy
 fun ProfileScreen(
     onBack: () -> Unit,
     onHospitalsClick: () -> Unit,
-    onBookingsClick: () -> Unit
+    onBookingsClick: () -> Unit,
+    onLogout: () -> Unit = {},
+    userName: String = "",
+    userPhone: String = ""
 ) {
     Scaffold(
         bottomBar = {
@@ -62,13 +65,13 @@ fun ProfileScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Anita Pathak", // Mock user name
+                        userName.ifBlank { "SwiftWard User" },
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "anita.pathak@email.com",
+                        if (userPhone.isBlank()) "" else "+977 $userPhone",
                         color = Color.White.copy(alpha = 0.7f),
                         fontSize = 14.sp
                     )
@@ -98,7 +101,7 @@ fun ProfileScreen(
                 Spacer(Modifier.height(16.dp))
 
                 Button(
-                    onClick = { /* Handle Logout */ },
+                    onClick = onLogout,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2)),
                     shape = RoundedCornerShape(12.dp)

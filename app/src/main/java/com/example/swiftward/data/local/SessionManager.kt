@@ -28,6 +28,7 @@ class SessionManager @Inject constructor(
 
     val token: Flow<String?> = context.dataStore.data.map { it[KEY_TOKEN] }
     val userName: Flow<String?> = context.dataStore.data.map { it[KEY_USERNAME] }
+    val userPhone: Flow<String?> = context.dataStore.data.map { it[KEY_PHONE] }
     val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { it[KEY_TOKEN] != null }
 
     suspend fun saveSession(token: String, userId: String, name: String, phone: String) {

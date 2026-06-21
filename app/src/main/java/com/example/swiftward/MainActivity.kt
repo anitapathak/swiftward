@@ -100,6 +100,58 @@ fun SwiftWardAppNavigation(sessionManager: SessionManager) {
                 )
             }
 
+            // 5b. Map Screen Destination
+            composable(Screen.map.route) {
+                MapScreen(
+                    onHospitalClick = { id -> navController.navigate(Screen.Detail.createRoute(id)) },
+                    onHospitalsClick = {
+                        navController.navigate(Screen.Hospitals.route) {
+                            popUpTo(Screen.Hospitals.route) { inclusive = true }
+                        }
+                    },
+                    onBookingsClick = { navController.navigate(Screen.MyBookings.route) },
+                    onProfileClick = { navController.navigate(Screen.Profile.route) }
+                )
+            }
+
+            // 5c. My Bookings Screen Destination
+            composable(Screen.MyBookings.route) {
+                BookingsScreen(
+                    onHospitalsClick = {
+                        navController.navigate(Screen.Hospitals.route) {
+                            popUpTo(Screen.Hospitals.route) { inclusive = true }
+                        }
+                    },
+                    onMapClick = { navController.navigate(Screen.map.route) },
+                    onProfileClick = { navController.navigate(Screen.Profile.route) }
+                )
+            }
+
+            // 5d. Profile Screen Destination (with working Logout)
+            composable(Screen.Profile.route) {
+                val authViewModel: AuthViewModel = hiltViewModel()
+                val profileName by sessionManager.userName.collectAsState(initial = "")
+                val profilePhone by sessionManager.userPhone.collectAsState(initial = "")
+                ProfileScreen(
+                    userName = profileName ?: "",
+                    userPhone = profilePhone ?: "",
+                    onBack = { navController.popBackStack() },
+                    onHospitalsClick = {
+                        navController.navigate(Screen.Hospitals.route) {
+                            popUpTo(Screen.Hospitals.route) { inclusive = true }
+                        }
+                    },
+                    onBookingsClick = { navController.navigate(Screen.MyBookings.route) },
+                    onLogout = {
+                        authViewModel.logout()
+                        navController.navigate(Screen.Login.route) {
+                            // Wipe the whole back stack so back-button can't return to a logged-in screen
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
             // 6. Hospital Detail Screen Destination
             composable(
                 route = Screen.Detail.route,
