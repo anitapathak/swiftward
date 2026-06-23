@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,44 +20,65 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import com.example.swiftward.R // Assuming you add the asset here
+import com.example.swiftward.R
 import com.example.swiftward.ui.navigation.Screen
-import com.swiftward.ui.theme.SwiftWardTheme
+import com.swiftward.utils.SessionManager
+import kotlinx.coroutines.delay
 
-// --- Define your theme colors here or import them ---
-val NavyPrimary = Color(0xFF1A3668) // The Deep Navy from your design
-val CreamBackground = Color(0xFFFAF6EE) // The light background from your design
-val TextSecondary = Color(0xFF888888) // Light Gray for subtitles
+val NavyPrimary = Color(0xFF1A3668)
+val CreamBackground = Color(0xFFFAF6EE)
+val TextSecondary = Color(0xFF888888)
 
 @Composable
-fun SplashScreen(navController: NavHostController) {
+fun SplashScreen(
+    navController: NavHostController,
+    // ✅ ADDED: Injecting your utility SessionManager instance here via Hilt
+    sessionManager: SessionManager = hiltViewModel()
+) {
+    // ✅ ADDED: Collect the asynchronous DataStore flow status
+    val isLoggedIn by sessionManager.isLoggedIn.collectAsState(initial = null)
+
+    // ✅ ADDED: Handle the routing check automatically on launch
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn != null) {
+            // Give the user a brief moment to look at your beautiful illustration details
+            delay(2000)
+
+            if (isLoggedIn == true) {
+                // Persistent token exists -> Route over to the dashboard layout immediately
+                navController.navigate(Screen.Hospitals.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
+            // If isLoggedIn == false, we don't auto-redirect; we let them manually tap the buttons below!
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
 
         // 1. TOP BLUE BAR (Rounded Bottom Corners)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp) // Height matching the status bar
+                .height(48.dp)
                 .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
                 .background(NavyPrimary)
         )
 
-        // MAIN CONTENT (Scaffold can cause issues with top bar padding, using simple Column)
+        // MAIN CONTENT
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(CreamBackground)
-                .padding(24.dp), // Main content padding
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Padding to account for the top bar
-            Spacer(modifier = Modifier.height(72.dp)) // (Top bar height + internal spacing)
+            Spacer(modifier = Modifier.height(72.dp))
 
             // APPLOGO ICON
             Box(
@@ -64,11 +88,10 @@ fun SplashScreen(navController: NavHostController) {
                     .background(NavyPrimary),
                 contentAlignment = Alignment.Center
             ) {
-                // Ensure you have an R.drawable.hospital_building icon
                 Icon(
                     painter = painterResource(id = R.drawable.hospital_building),
                     contentDescription = null,
-                    tint = Color.Unspecified, // Keep original colors
+                    tint = Color.Unspecified,
                     modifier = Modifier.size(48.dp)
                 )
             }
@@ -109,9 +132,13 @@ fun SplashScreen(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 3. GET STARTED BUTTON (Matches your implementation, just adding elevation)
+            // 3. GET STARTED BUTTON (Wipes the Splash view so users cannot back track into it)
             Button(
-                onClick = { navController.navigate(Screen.Login.route) },
+                onClick = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
@@ -122,12 +149,15 @@ fun SplashScreen(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 4. BROWSE HOSPITALS BUTTON (Rounded, Clickable Box style)
+            // 4. BROWSE HOSPITALS BUTTON (Guest entry point clear logic)
             Button(
-                onClick = { navController.navigate(Screen.Hospitals.route) },
+                onClick = {
+                    navController.navigate(Screen.Hospitals.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(12.dp),
-                // FIX: Light gray background for this button
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
             ) {
@@ -143,13 +173,12 @@ fun SplashScreen(navController: NavHostController) {
     }
 }
 
-// Helper: INFO BADGE
 @Composable
 fun InfoBadge(title: String, subtitle: String) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFEEEAE2)) // Matching the other boxes
+            .background(Color(0xFFEEEAE2))
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -158,7 +187,6 @@ fun InfoBadge(title: String, subtitle: String) {
     }
 }
 
-// Helper: GRAPHICAL ILLUSTRATION (Replicates the dotted line map)
 @Composable
 fun GraphicalIllustration() {
     Box(
@@ -166,23 +194,20 @@ fun GraphicalIllustration() {
             .fillMaxWidth()
             .height(120.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFEEEAE2)), // Main area background
+            .background(Color(0xFFEEEAE2)),
         contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Light Blue Icon
             Box(
                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFD9E7FF)),
                 contentAlignment = Alignment.Center
             ) {
-                // Placeholder, replace with actual R.drawable.hospital_outline
                 Text("🏥", color = Color(0xFF6A99E5))
             }
 
-            // RED DOTTED LINE
             Canvas(modifier = Modifier.width(48.dp).height(1.dp)) {
                 drawLine(
                     color = Color.Red,
@@ -193,7 +218,6 @@ fun GraphicalIllustration() {
                 )
             }
 
-            // Central Hospital Icon with Red Plus
             Box(
                 modifier = Modifier.size(40.dp),
                 contentAlignment = Alignment.Center
@@ -204,14 +228,12 @@ fun GraphicalIllustration() {
                 ) {
                     Text("🏥", color = Color.Red)
                 }
-                // Red circular pulse dot
                 Box(
                     modifier = Modifier.size(10.dp).align(Alignment.BottomEnd).offset(x=4.dp, y=4.dp)
                         .border(1.dp, Color.White, CircleShape).clip(CircleShape).background(Color.Red)
                 )
             }
 
-            // GREEN DOTTED LINE
             Canvas(modifier = Modifier.width(48.dp).height(1.dp)) {
                 drawLine(
                     color = Color(0xFF4CAF50),
@@ -222,7 +244,6 @@ fun GraphicalIllustration() {
                 )
             }
 
-            // Light Green Icon
             Box(
                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFE2F0D9)),
                 contentAlignment = Alignment.Center

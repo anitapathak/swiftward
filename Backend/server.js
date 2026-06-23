@@ -32,7 +32,7 @@ mongoose.connect(dbURI)
 app.use('/api', authRoutes); 
 
 // 4. SERVER START
-const PORT = 5000;
+const PORT = 5001;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📱 Android Emulator Target Address: http://10.0.2.2:${PORT}/api`);

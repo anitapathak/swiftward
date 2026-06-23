@@ -1,118 +1,138 @@
 package com.example.swiftward.ui.screens
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.*
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.swiftward.ui.viewmodel.BookingViewModel.BookingViewModel
-import com.swiftward.data.model.*
-import com.swiftward.ui.theme.*
+import com.swiftward.data.model.Booking
+import com.swiftward.data.model.BookingStatus
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingsScreen(
-    viewModel: BookingViewModel = hiltViewModel(),
+    viewModel: BookingViewModel, // ✅ Accepts ViewModel parameter to resolve NavGraph error
     onHospitalsClick: () -> Unit,
     onMapClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
-
-    LaunchedEffect(Unit) { viewModel.loadBookings() }
+    // Collect real-time array updates from your custom global list layer
+    val bookings by viewModel.bookings.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("My Bookings", fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold, color = Color.White)
-                        Text("Your bed reservation history",
-                            fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                        Text(
+                            text = "My Bookings",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Your bed reservation history",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Navy)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1A237E)
+                )
             )
-        },
-        bottomBar = {
-            SwiftWardBottomBar(
-                selected         = 2,
-                onHospitalsClick = onHospitalsClick, // Changed from onHospitals
-                onMapClick       = onMapClick,       // Changed from onMap
-                onBookingsClick  = {},               // Changed from onBookings
-                onProfileClick   = onProfileClick    // Changed from onProfile
-            )
-        },
-        containerColor = Color(0xFFF5F5F5)
-    ) { padding ->
-        when {
-            state.isLoading -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Navy)
-                }
-            }
-            state.bookings.isEmpty() -> {
-                Box(
-                    Modifier.fillMaxSize().padding(padding).padding(32.dp),
-                    contentAlignment = Alignment.Center
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF8F9FA))
+                .padding(innerPadding)
+        ) {
+            if (bookings.isEmpty()) {
+                // --- Empty State Layout Spec Illustration ---
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.EventBusy, null,
-                            modifier = Modifier.size(64.dp), tint = Color(0xFFD1D5DB))
-                        Spacer(Modifier.height(16.dp))
-                        Text("No bookings yet", fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                        Text(
-                            "Your emergency bed bookings will appear here once you make a reservation.",
-                            fontSize   = 13.sp,
-                            color      = TextSecond,
-                            textAlign  = androidx.compose.ui.text.style.TextAlign.Center,
-                            lineHeight = 20.sp,
-                            modifier   = Modifier.padding(top = 8.dp)
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        Button(
-                            onClick  = onHospitalsClick,
-                            colors   = ButtonDefaults.buttonColors(containerColor = Navy),
-                            shape    = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Find nearby hospitals")
-                        }
+                    Text("🗓️", fontSize = 64.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No bookings yet",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Your emergency bed bookings will appear here once you make a reservation.",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = onHospitalsClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A237E)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Find nearby hospitals", fontWeight = FontWeight.Medium)
                     }
                 }
-            }
-            else -> {
+            } else {
+                // --- Chronological Scrollable History List Section ---
                 LazyColumn(
-                    Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     item {
-                        Text(
-                            "${state.bookings.size} BOOKING${if (state.bookings.size != 1) "S" else ""}",
-                            fontSize     = 11.sp,
-                            fontWeight   = FontWeight.SemiBold,
-                            color        = TextSecond,
-                            letterSpacing = 0.5.sp,
-                            modifier     = Modifier.padding(bottom = 4.dp)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${bookings.size} BOOKINGS",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray
+                            )
+                            Text(
+                                text = "Newest first",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
                     }
-                    items(state.bookings) { booking ->
-                        BookingCard(booking)
+
+                    items(bookings) { bookingItem ->
+                        BookingHistoryCard(booking = bookingItem)
                     }
                 }
             }
@@ -121,95 +141,147 @@ fun BookingsScreen(
 }
 
 @Composable
-fun BookingCard(booking: Booking) {
-    val sdf    = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
-    val dateStr = sdf.format(Date(booking.createdAt))
-
-    val (statusBg, statusFg, statusText) = when (booking.status) {
-        BookingStatus.CONFIRMED  -> Triple(Color(0xFFDCFCE7), Color(0xFF166534), "Confirmed")
-        BookingStatus.PENDING    -> Triple(Color(0xFFFEF3C7), Color(0xFF92400E), "Pending")
-        BookingStatus.PREPARING  -> Triple(Color(0xFFDCFCE7), Color(0xFF166534), "Preparing")
-        BookingStatus.ARRIVED    -> Triple(Color(0xFFEFF6FF), Navy,              "Arrived")
-        BookingStatus.CANCELLED  -> Triple(Color(0xFFFEE2E2), Color(0xFFDC2626), "Cancelled")
+fun BookingHistoryCard(booking: Booking) {
+    val dateString = remember(booking.createdAt) {
+        val sdf = SimpleDateFormat("dd Jun 2026 · hh:mm a", Locale.getDefault())
+        sdf.format(Date(booking.createdAt))
     }
 
     Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(14.dp),
-        colors    = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(1.dp)
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(Modifier.padding(14.dp)) {
-            // Header row
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Row 1: Hospital Name & Status Badge Tag
             Row(
-                Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.Top
+                verticalAlignment = Alignment.Top
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(booking.hospitalName, fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Text(dateStr, fontSize = 11.sp, color = TextSecond,
-                        modifier = Modifier.padding(top = 2.dp))
-                }
-                Surface(shape = RoundedCornerShape(20.dp), color = statusBg) {
-                    Text(statusText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                        color = statusFg,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                }
-            }
-
-            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = Color(0xFFF3F4F6))
-
-            // Booking details grid
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                BookingDetailItem(Icons.Default.Person,
-                    "${booking.patient.name}, ${booking.patient.age}")
-                BookingDetailItem(Icons.Default.Bed, booking.wardType.displayName)
-            }
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                BookingDetailItem(Icons.Default.MedicalServices, booking.condition)
-                BookingDetailItem(Icons.Default.Bloodtype, booking.patient.bloodGroup)
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Booking ID + payment
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFFFEF3C7)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        booking.bookingId,
-                        fontSize   = 12.sp,
+                        text = booking.hospitalName,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color      = Color(0xFF92400E),
-                        modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        color = Color.Black
+                    )
+                    Text(
+                        text = if (booking.hospitalName.contains("Bir")) "Mahabauddha, Kathmandu" else "Dhapasi, Kathmandu",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = dateString,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
+
+                val statusColor = if (booking.status == BookingStatus.CONFIRMED) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
+                val statusTxtColor = if (booking.status == BookingStatus.CONFIRMED) Color(0xFF2E7D32) else Color(0xFFC62828)
+
+                Surface(
+                    color = statusColor,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = booking.status.name.lowercase().replaceFirstChar { it.titlecase() },
+                        color = statusTxtColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Row 2: Booking Reference Tag Badge ID & Ward Mode
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = Color(0xFFFFF3E0),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = booking.bookingId,
+                        color = Color(0xFFE65100),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+
+                Surface(
+                    color = Color(0xFFE8EAF6),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = booking.wardType.name,
+                        color = Color(0xFF3F51B5),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Spec Parameters Profile Layout List Blocks
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "${booking.patient.name}, ${booking.patient.age} · ${booking.patient.gender}", fontSize = 14.sp)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) { Text("💧", fontSize = 11.sp) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Blood group: ${booking.patient.bloodGroup}", fontSize = 14.sp, color = Color.Gray)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = Color.DarkGray, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = booking.condition, fontSize = 14.sp, color = Color.Black)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) { Text("🕒", fontSize = 11.sp) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "ETA ${booking.etaMinutes} min", fontSize = 14.sp, color = Color.Black)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Bottom row info details
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🩺", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = booking.assignedDoctor, fontSize = 14.sp, color = Color.DarkGray)
+                }
                 Text(
-                    "Rs ${booking.feePaid} paid",
-                    fontSize   = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color      = Color(0xFF166534)
+                    text = if (booking.feePaid > 0) "Rs ${booking.feePaid} paid" else "Unpaid",
+                    color = if (booking.feePaid > 0) Color(0xFF2E7D32) else Color.Gray,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun BookingDetailItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    text: String
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null,
-            modifier = Modifier.size(14.dp), tint = TextSecond)
-        Spacer(Modifier.width(4.dp))
-        Text(text, fontSize = 12.sp, color = TextPrimary)
     }
 }

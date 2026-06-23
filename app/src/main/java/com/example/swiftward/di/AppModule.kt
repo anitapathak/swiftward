@@ -27,7 +27,7 @@ object AppModule {
     fun provideSwiftWardApi(): SwiftWardApi {
         return Retrofit.Builder()
             // FIXED: Changed placeholder URL to your Node.js server address
-            .baseUrl("http://10.0.2.2:5000/")
+            .baseUrl("http://10.0.2.2:5001/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(SwiftWardApi::class.java)

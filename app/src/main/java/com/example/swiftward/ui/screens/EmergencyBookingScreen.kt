@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -32,6 +31,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.swiftward.data.model.BookingRequest
+import com.swiftward.data.model.PatientProfile // ✅ Swapped old Patient model for your PatientProfile schema
+import com.swiftward.data.model.WardType
 import com.swiftward.ui.theme.Navy
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +41,7 @@ import com.swiftward.ui.theme.Navy
 fun EmergencyBookingScreen(
     hospitalId: String,
     onBack: () -> Unit,
-    onBookingConfirmed: (String) -> Unit
+    onBookingConfirmed: (BookingRequest) -> Unit
 ) {
     // Form States
     var patientName by remember { mutableStateOf("anita pathak") }
@@ -48,6 +50,8 @@ fun EmergencyBookingScreen(
     var selectedCondition by remember { mutableStateOf("Cardiac arrest") }
     var estimatedTime by remember { mutableStateOf("~10 minutes") }
     var notesForStaff by remember { mutableStateOf("") }
+
+    val bloodGroupTracker by remember { mutableStateOf("O+") }
 
     // Dropdown expanded configurations
     var genderExpanded by remember { mutableStateOf(false) }
@@ -75,10 +79,6 @@ fun EmergencyBookingScreen(
         }
     }
 
-    // =======================================================================
-    // FIX: Combined vertical scroll added to the root layout container.
-    // This allows the entire screen view to slide up dynamically together.
-    // =======================================================================
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -125,10 +125,6 @@ fun EmergencyBookingScreen(
         }
 
         // --- Form Fields ---
-        // =======================================================================
-        // FIX: Replaced .fillMaxSize() with .fillMaxWidth() so that vertical
-        // heights wrap cleanly without conflicting with the root scrolling setup.
-        // =======================================================================
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -324,9 +320,53 @@ fun EmergencyBookingScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             // --- Action Button Block ---
+            // --- Action Button Block ---
             Button(
                 onClick = {
-                    onBookingConfirmed("BK-${(1000..9999).random()}")
+                    val parsedMinutes = try {
+                        estimatedTime.replace("~", "").replace(" minutes", "").trim().toInt()
+                    } catch (e: Exception) {
+                        10
+                    }
+
+                    val cleanedWardDisplayName = selectedBedType.substringBefore(" (").trim()
+
+                    // Safely parse String age into Int for PatientProfile matching
+                    val parsedAge = age.toIntOrNull() ?: 0
+
+                    // ✅ Map UI selection text to your exact Enum Constants to resolve compilation issues
+                    val matchedWardType = when (cleanedWardDisplayName) {
+                        "ICU"            -> WardType.ICU
+                        "HDU"            -> WardType.HDU
+                        "General Ward"   -> WardType.GENERAL
+                        "Pediatric"      -> WardType.PEDIATRIC
+                        "Emergency"      -> WardType.EMERGENCY
+                        "Maternity"      -> WardType.MATERNITY
+                        "Burn Unit"      -> WardType.BURN
+                        "Orthopedic"     -> WardType.ORTHOPEDIC
+                        "Cardiac / CICU" -> WardType.CARDIAC
+                        "Neurology"      -> WardType.NEUROLOGY
+                        else             -> WardType.EMERGENCY // Safe fallback logic
+                    }
+
+                    // ✅ Instantiates BookingRequest correctly with valid Enum reference matching your model structure
+                    val dynamicBookingPayload = BookingRequest(
+                        hospitalId = hospitalId,
+                        condition = selectedCondition,
+                        etaMinutes = parsedMinutes,
+                        notes = notesForStaff.ifEmpty { "Emergency reservation routing alert" },
+                        isEmergency = true,
+                        patient = PatientProfile(
+                            name = patientName,
+                            age = parsedAge,
+                            gender = selectedGender,
+                            bloodGroup = bloodGroupTracker,
+                            knownConditions = listOf(selectedCondition)
+                        ),
+                        wardType = matchedWardType // ✅ Valid enum assignment passes clean compilation
+                    )
+
+                    onBookingConfirmed(dynamicBookingPayload)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -339,7 +379,7 @@ fun EmergencyBookingScreen(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = " Continuee to Payment ",
+                        text = "Continue to Payment",
                         color = Color.White,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
@@ -352,8 +392,6 @@ fun EmergencyBookingScreen(
                     )
                 }
             }
-
-            // Subtle buffer height at the very bottom to ensure sleek navigation bar margins
             Spacer(modifier = Modifier.height(24.dp))
         }
     }

@@ -25,6 +25,7 @@ import com.example.swiftward.ui.viewmodel.AuthViewModel
 fun RegisterScreen(
     navController: NavHostController,
     onNavigateToLogin: () -> Unit,
+    onRegistrationSuccess: (phone: String, email: String) -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     // --- State Management ---

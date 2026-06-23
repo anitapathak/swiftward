@@ -1,9 +1,6 @@
 package com.example.swiftward.ui.screens
 
 import android.os.Build
-import android.util.Base64
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -24,11 +21,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.swiftward.ui.theme.Navy
-import androidx.compose.material3.TopAppBar
 
 enum class PaymentMethod { ESEWA, KHALTI }
+
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,33 +33,13 @@ fun EmergencyPaymentScreen(
     bedType: String = "ICU bed",
     hospitalName: String = "Bir Hospital",
     onBack: () -> Unit,
-    onPaymentSuccess: (txId: String) -> Unit,
+    onPaymentSuccess: (String) -> Unit,
     onPaymentFailure: (error: String) -> Unit
 ) {
     var selectedMethod by remember { mutableStateOf(PaymentMethod.ESEWA) }
 
-    // Web checkout state toggles if an API redirects to a checkout URL
-    var checkoutUrl by remember { mutableStateOf<String?>(null) }
-
     val esewaGreen = Color(0xFF55B540)
     val khaltiPurple = Color(0xFF5C2D91)
-
-    // If API yields a payment gateway redirect URL, render it safely inside an isolated container
-    if (checkoutUrl != null) {
-        PaymentWebViewContainer(
-            url = checkoutUrl!!,
-            onSuccessIntercept = { transactionId ->
-                checkoutUrl = null
-                onPaymentSuccess(transactionId)
-            },
-            onFailureIntercept = { errorMsg ->
-                checkoutUrl = null
-                onPaymentFailure(errorMsg)
-            },
-            onClose = { checkoutUrl = null }
-        )
-        return
-    }
 
     Column(
         modifier = Modifier
@@ -209,18 +185,9 @@ fun EmergencyPaymentScreen(
             // --- Dynamic Unified Pay CTA Action Button ---
             Button(
                 onClick = {
-                    if (selectedMethod == PaymentMethod.ESEWA) {
-                        // For eSewa, generate secure signature parameter maps & dispatch
-                        checkoutUrl = initiateEsewaPaymentPayload(bookingId, "300")
-                    } else {
-                        // For Khalti, trigger API call to initiate payment intent endpoint
-                        initiateKhaltiPaymentApi(
-                            bookingId = bookingId,
-                            amountInPaisa = 30000, // 300 Rs * 100 Paisa
-                            onSuccess = { paymentUrl -> checkoutUrl = paymentUrl },
-                            onFailure = { errorMsg -> onPaymentFailure(errorMsg) }
-                        )
-                    }
+                    // Generate a local mock transaction reference ID to jump straight to the booking success screen
+                    val mockTxId = "TXN-${(100000..999999).random()}"
+                    onPaymentSuccess(mockTxId)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -294,54 +261,5 @@ fun PaymentSelectorRow(
                 colors = RadioButtonDefaults.colors(selectedColor = selectedBorderColor)
             )
         }
-    }
-}
-
-@ExperimentalMaterial3Api
-@Composable
-fun PaymentWebViewContainer(
-    url: String,
-    onSuccessIntercept: (String) -> Unit,
-    onFailureIntercept: (String) -> Unit,
-    onClose: () -> Unit
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Gateway Checkout", fontSize = 16.sp) },
-                navigationIcon = {
-                    IconButton(onClick = onClose) { Icon(Icons.Default.ArrowBack, "Cancel") }
-                }
-            )
-        }
-    ) { padding ->
-        AndroidView(
-            modifier = Modifier.padding(padding).fillMaxSize(),
-            factory = { context ->
-                WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView?, urlStr: String?): Boolean {
-                            if (urlStr != null) {
-                                // Intercept SwiftWard verification response redirection endpoints
-                                when {
-                                    urlStr.contains("payment-success") || urlStr.contains("oid=") -> {
-                                        val pidx = urlStr.substringAfter("pidx=", "TXN-SUCCESS")
-                                        onSuccessIntercept(pidx)
-                                        return true
-                                    }
-                                    urlStr.contains("payment-failed") -> {
-                                        onFailureIntercept("Payment canceled by user or rejected by gateway.")
-                                        return true
-                                    }
-                                }
-                            }
-                            return false
-                        }
-                    }
-                }
-            },
-            update = { webView -> webView.loadUrl(url) }
-        )
     }
 }
