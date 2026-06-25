@@ -4,18 +4,17 @@ import com.google.gson.annotations.SerializedName
 
 // ── Hospital ──────────────────────────────────────────────────────────────────
 enum class WardType(val displayName: String, val shortName: String) {
-    EMERGENCY  ("Emergency",          "Emergency"),
-    ICU        ("ICU",                "ICU"),
-    HDU        ("HDU / Step-down",    "HDU"),
-    GENERAL    ("General Ward",       "General"),
-    PEDIATRIC  ("Pediatric",          "Pediatric"),
-    MATERNITY  ("Maternity",          "Maternity"),
-    BURN       ("Burn Unit",          "Burns"),
-    ORTHOPEDIC ("Orthopedic",         "Ortho"),
-    CARDIAC    ("Cardiac / CICU",     "Cardiac"),
-    NEUROLOGY  ("Neurology",          "Neuro")
+    EMERGENCY  ("Emergency",       "Emergency"),
+    ICU        ("ICU",             "ICU"),
+    HDU        ("HDU / Step-down", "HDU"),
+    GENERAL    ("General Ward",    "General"),
+    PEDIATRIC  ("Pediatric",       "Pediatric"),
+    MATERNITY  ("Maternity",       "Maternity"),
+    BURN       ("Burn Unit",       "Burns"),
+    ORTHOPEDIC ("Orthopedic",      "Ortho"),
+    CARDIAC    ("Cardiac / CICU",  "Cardiac"),
+    NEUROLOGY  ("Neurology",       "Neuro")
 }
-
 
 data class Hospital(
     val id: String,
@@ -29,14 +28,11 @@ data class Hospital(
     val distanceKm: Double = 0.0,
     val avgWaitMinutes: Int = 8
 ) {
-    val totalFreeBeds: Int get() = wards.sumOf { it.freeBeds }
-    val isFull: Boolean get() = totalFreeBeds == 0
+    val totalFreeBeds: Int  get() = wards.sumOf { it.freeBeds }
+    val isFull: Boolean     get() = totalFreeBeds == 0
 
-    // Most critical ward with available beds
     val topAvailableWard: Ward?
-        get() = wards
-            .filter { it.freeBeds > 0 }
-            .minByOrNull { wardPriorityScore(it.type) }
+        get() = wards.filter { it.freeBeds > 0 }.minByOrNull { wardPriorityScore(it.type) }
 
     private fun wardPriorityScore(type: WardType) = when (type) {
         WardType.EMERGENCY   -> 1
@@ -50,43 +46,23 @@ data class Hospital(
         WardType.CARDIAC     -> 9
         WardType.NEUROLOGY   -> 10
     }
-
 }
 
-data class Ward(
-    val id: String,
-    val type: WardType,
-    val totalBeds: Int,
-    val freeBeds: Int
-)
-
-
+data class Ward(val id: String, val type: WardType, val totalBeds: Int, val freeBeds: Int)
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
+data class LoginRequest(val phone: String, val password: String)
 
-data class LoginRequest(
-    val phone: String,
-    val password: String
-)
 data class RegisterRequest(
-    @SerializedName("name") // Backend destructures req.body.name
-    val name: String,
+    @SerializedName("name") val name: String,
     val phone: String,
     val email: String,
     val password: String
-
 )
 
-data class OtpRequest(
-    val phone: String,
-    val otp: String
-)
+data class OtpRequest(val phone: String, val otp: String)
 
-data class AuthResponse(
-    val token: String,
-    val user: User,
-    val message: String = ""
-)
+data class AuthResponse(val token: String, val user: User, val message: String = "")
 
 data class User(
     val id: String,
@@ -97,7 +73,6 @@ data class User(
 )
 
 // ── Patient & Booking ─────────────────────────────────────────────────────────
-
 data class PatientProfile(
     val name: String,
     val age: Int,
@@ -130,51 +105,70 @@ data class Booking(
     val assignedDoctor: String,
     val hospitalPhone: String,
     val createdAt: Long = System.currentTimeMillis(),
-    val feePaid: Int
+    val feePaid: Int,
+    val transactionId: String = ""  // NEW: store Khalti transaction ID
 )
 
 enum class BookingStatus { PENDING, CONFIRMED, PREPARING, ARRIVED, CANCELLED }
 
 // ── API wrappers ──────────────────────────────────────────────────────────────
-
 data class ApiResponse<T>(
     val success: Boolean,
     val data: T?,
     val message: String = ""
 )
+
 data class VerifyOtpRequest(
-    // Backend reads req.body.phone and req.body.otp
-    @SerializedName("phone")
-    val phoneNumber: String,
-    @SerializedName("otp")
-    val userOtp: String
+    @SerializedName("phone") val phoneNumber: String,
+    @SerializedName("otp")   val userOtp: String
 )
 
-data class ResendOtpRequest(
-    @SerializedName("phone")
-    val phoneNumber: String
+data class ResendOtpRequest(@SerializedName("phone") val phoneNumber: String)
+
+data class OtpResponse(val success: Boolean, val message: String)
+
+// ── Khalti ────────────────────────────────────────────────────────────────────
+data class KhaltiInitiateRequest(
+    val bookingId: String,
+    val amount: Long,           // in paisa (30000 = Rs 300)
+    val hospitalName: String,
+    val wardType: String,
+    val userName: String,
+    val userEmail: String
 )
 
-data class OtpResponse(
-    val success: Boolean,
-    val message: String
+data class KhaltiInitiateResponse(
+    val pidx: String,
+    val payment_url: String,
+    val expires_at: String = ""
 )
 
-// ── Dual sort comparator ──────────────────────────────────────────────────────
-// Primary: distance ascending
-// Secondary: most critical available ward type ascending
-// Full hospitals always last
+data class KhaltiVerifyRequest(
+    val pidx: String,
+    val bookingId: String,
+    val hospitalName: String,
+    val wardType: String,
+    val userEmail: String,
+    val userName: String
+)
+
+data class KhaltiVerifyResponse(
+    val status: String,
+    val transaction_id: String?,
+    val pidx: String,
+    val amount: Long,
+    val isCompleted: Boolean
+)
+
+// ── Dual sort ─────────────────────────────────────────────────────────────────
 object HospitalSorter {
-
     fun sort(hospitals: List<Hospital>): List<Hospital> {
         val (available, full) = hospitals.partition { !it.isFull }
-
         val sorted = available.sortedWith(
             compareBy<Hospital> { it.distanceKm }
-                .thenBy  { it.topAvailableWard?.let { w -> wardScore(w.type) } ?: 99 }
+                .thenBy { it.topAvailableWard?.let { w -> wardScore(w.type) } ?: 99 }
                 .thenByDescending { it.totalFreeBeds }
         )
-
         return sorted + full.sortedBy { it.distanceKm }
     }
 
@@ -189,16 +183,15 @@ object HospitalSorter {
     }
 
     private fun wardScore(type: WardType) = when (type) {
-        WardType.EMERGENCY   -> 1
-        WardType.ICU         -> 2
-        WardType.HDU         -> 3
-        WardType.GENERAL     -> 4
-        WardType.PEDIATRIC   -> 5
-        WardType.MATERNITY   -> 6
-        WardType.BURN        -> 7
-        WardType.ORTHOPEDIC  -> 8
-        WardType.CARDIAC     -> 9
+        WardType.EMERGENCY   -> 1; WardType.ICU -> 2; WardType.HDU -> 3
+        WardType.GENERAL     -> 4; WardType.PEDIATRIC -> 5; WardType.MATERNITY -> 6
+        WardType.BURN        -> 7; WardType.ORTHOPEDIC -> 8; WardType.CARDIAC -> 9
         WardType.NEUROLOGY   -> 10
     }
 }
 
+sealed class Result<out T> {
+    object Loading : Result<Nothing>()
+    data class Success<T>(val data: T) : Result<T>()
+    data class Error(val message: String) : Result<Nothing>()
+}

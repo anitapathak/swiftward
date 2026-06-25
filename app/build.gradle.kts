@@ -34,12 +34,9 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.compose.material)
-    implementation(libs.androidx.compose.ui.graphics)
+    // Core
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.foundation)
-    implementation(libs.androidx.glance)
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
@@ -51,35 +48,56 @@ dependencies {
     implementation(libs.androidx.material.icons)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.foundation)
+
+    // Hilt DI
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+
+    // Retrofit / Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
+
+    // Room
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
     implementation(libs.room.ktx)
-    implementation(libs.play.services.location)
-    implementation(libs.accompanist.permissions)
-    implementation(libs.coil.compose)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.datastore.preferences)
-    debugImplementation(libs.androidx.ui.tooling)
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-    androidTestImplementation("androidx.test:runner:1.5.2")
-    testImplementation("junit:junit:4.13.2")
 
-    // If you have instrumented tests (in the androidTest folder)
+    // Location (FusedLocationProvider for real GPS)
+    implementation(libs.play.services.location)
+
+    // Permissions helper
+    implementation(libs.accompanist.permissions)
+
+    // Image loading
+    implementation(libs.coil.compose)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+
+    // DataStore (session persistence)
+    implementation(libs.datastore.preferences)
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // OSMDroid — 100% open-source OpenStreetMap (no API key required)
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+    // Lifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+
+    // Test
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    // This line provides the "viewModelScope" capability
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+    debugImplementation(libs.androidx.ui.tooling)
 }
+
 configurations.all {
     resolutionStrategy {
         force("androidx.datastore:datastore-preferences-core:1.1.1")
         force("androidx.datastore:datastore-core:1.1.1")
     }
 }
+// appcompat added for theme compatibility

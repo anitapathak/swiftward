@@ -28,67 +28,46 @@ fun OtpScreen(
     email: String,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    // State for the 6 OTP digits
     val otpValues = remember { mutableStateListOf("", "", "", "", "", "") }
     var localError by remember { mutableStateOf<String?>(null) }
 
-    // Backend-driven state (timer, loading, error, success)
     val state by viewModel.state.collectAsState()
-
-    // Prefer a local validation message, otherwise show the backend error
     val otpError = localError ?: state.error
 
-    // Start the resend countdown when the screen first appears
-    LaunchedEffect(Unit) {
-        viewModel.startTimer()
-    }
+    LaunchedEffect(Unit) { viewModel.startTimer() }
 
-    // A verified user is also signed in (verify-otp returns a token), so go to the hospital list
+    // FIX: After OTP verified → go to Login NOT dashboard
+    // User must manually log in once before session is saved
     LaunchedEffect(state.success) {
         if (state.success) {
             viewModel.resetSuccess()
-            navController.navigate(Screen.Hospitals.route) {
+            navController.navigate(Screen.Login.route) {
                 popUpTo(0) { inclusive = true }
             }
         }
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
+        modifier = Modifier.fillMaxSize().background(Color.White)
     ) {
-        // --- Dark Blue Header ---
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .background(Color(0xFF1A3668)),
+            modifier = Modifier.fillMaxWidth().height(100.dp).background(Color(0xFF1A3668)),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 "OTP verification",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
+                color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 24.dp, top = 20.dp)
             )
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Phone Icon
-            Surface(
-                modifier = Modifier.size(80.dp),
-                shape = CircleShape,
-                color = Color(0xFFE8F0FE)
-            ) {
+            Surface(modifier = Modifier.size(80.dp), shape = CircleShape, color = Color(0xFFE8F0FE)) {
                 Icon(
                     imageVector = Icons.Default.PhoneAndroid,
                     contentDescription = null,
@@ -96,24 +75,18 @@ fun OtpScreen(
                     tint = Color(0xFF1A3668)
                 )
             }
+
             Spacer(modifier = Modifier.height(24.dp))
             Text("Verify your account", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-
-            // Displays the email passed down cleanly via navigation
             Text(
                 text = "We sent a 6-digit code to\n$email",
-                color = Color.Gray,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(top = 8.dp)
+                color = Color.Gray, fontSize = 14.sp,
+                modifier = Modifier.padding(top = 8.dp), textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- OTP Input Boxes ---
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 otpValues.forEachIndexed { index, value ->
                     OutlinedTextField(
                         value = value,
@@ -126,9 +99,7 @@ fun OtpScreen(
                         modifier = Modifier.width(45.dp).height(56.dp),
                         shape = RoundedCornerShape(8.dp),
                         textStyle = LocalTextStyle.current.copy(
-                            textAlign = TextAlign.Center,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            textAlign = TextAlign.Center, fontSize = 18.sp, fontWeight = FontWeight.Bold
                         ),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF1A3668),
@@ -145,7 +116,6 @@ fun OtpScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- Verify & Continue Button ---
             Button(
                 onClick = {
                     val fullOtp = otpValues.joinToString("")
@@ -153,7 +123,6 @@ fun OtpScreen(
                         localError = "Please enter all 6 digits"
                     } else {
                         localError = null
-                        // Verify against the backend using the phone the account was registered with
                         viewModel.verifyOtp(phone, fullOtp)
                     }
                 },
@@ -171,7 +140,6 @@ fun OtpScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- Resend Logic ---
             if (state.canResend) {
                 TextButton(onClick = { viewModel.resendOtp(phone) }) {
                     Text("Didn't receive? Resend OTP", color = Color(0xFF1A3668), fontWeight = FontWeight.Bold)
@@ -179,26 +147,25 @@ fun OtpScreen(
             } else {
                 Text(
                     text = "Resend in 0:${state.timerValue.toString().padStart(2, '0')}",
-                    color = Color.Gray,
-                    fontSize = 14.sp
+                    color = Color.Gray, fontSize = 14.sp
                 )
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // --- Emergency Information Box ---
+            // Show info: after verify, login once
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                color = Color(0xFFE8F0FE),
-                shape = RoundedCornerShape(12.dp)
+                color = Color(0xFFE8F0FE), shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "In an emergency you can skip login and browse hospitals freely.",
+                    text = "After verification, please log in once with your credentials. You will stay logged in until you choose to log out.",
                     modifier = Modifier.padding(16.dp),
-                    color = Color(0xFF1A3668),
-                    fontSize = 14.sp
+                    color = Color(0xFF1A3668), fontSize = 14.sp
                 )
             }
         }
     }
 }
+
+
