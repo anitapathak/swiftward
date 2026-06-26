@@ -18,20 +18,25 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var sessionManager: SessionManager
 
-    // Holds the deep-link data from Khalti callback
-    // e.g. swiftward://payment/callback?pidx=xxx&status=Completed&bookingId=SW-123
+    // Deep-link intents from Khalti or "Return to App" button
     private var khaltiCallbackIntent: Intent? = null
+    private var returnHomeIntent: Boolean = false
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        khaltiCallbackIntent = intent?.takeIf { it.data?.scheme == "swiftward" }
+        val uri = intent?.data
+        when {
+            uri?.scheme == "swiftward" && uri.host == "payment" -> khaltiCallbackIntent = intent
+            uri?.scheme == "swiftward" && uri.host == "home"    -> returnHomeIntent = true
+        }
 
         setContent {
             SwiftWardTheme {
                 NavGraph(
                     sessionManager = sessionManager,
-                    khaltiCallbackIntent = khaltiCallbackIntent
+                    khaltiCallbackIntent = khaltiCallbackIntent,
+                    navigateToHome = returnHomeIntent
                 )
             }
         }
@@ -42,10 +47,16 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.data?.scheme == "swiftward") {
-            // Restart composition with the new intent
-            khaltiCallbackIntent = intent
-            recreate()
+        val uri = intent.data
+        when {
+            uri?.scheme == "swiftward" && uri.host == "payment" -> {
+                khaltiCallbackIntent = intent
+                recreate()
+            }
+            uri?.scheme == "swiftward" && uri.host == "home" -> {
+                returnHomeIntent = true
+                recreate()
+            }
         }
     }
 }

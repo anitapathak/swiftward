@@ -46,7 +46,7 @@ exports.register = async (req, res) => {
                   </div>
                   <p style="color:#666">Expires in <strong>10 minutes</strong>.</p></div>`
             });
-        } catch (e) { console.error("OTP email failed:", e.message); }
+        } catch (e) { console.error('❌ OTP email failed:', JSON.stringify(e)); }
 
         res.status(200).json({ success: true, message: "OTP sent to your email" });
     } catch (err) {
@@ -82,7 +82,7 @@ exports.verifyOtp = async (req, res) => {
                   </div>
                   <p>Please log in with your phone and password to continue.</p></div>`
             });
-        } catch (e) { console.error("Welcome email failed:", e.message); }
+        } catch (e) { console.error('❌ Welcome email failed:', JSON.stringify(e)); }
 
         res.status(200).json({ success: true, message: "Verified! Please log in to continue.", data: null });
     } catch (err) {
@@ -112,7 +112,7 @@ exports.resendOtp = async (req, res) => {
                     <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#1A3668">${otp}</span>
                   </div><p style="color:#666">Expires in 10 minutes.</p></div>`
             });
-        } catch (e) { console.error("Resend email failed:", e.message); }
+        } catch (e) { console.error('❌ Resend OTP email failed:', JSON.stringify(e)); }
 
         res.status(200).json({ success: true, message: "New OTP sent!" });
     } catch (err) {
@@ -143,7 +143,7 @@ exports.login = async (req, res) => {
 // The app intercepts it and calls /api/khalti/verify automatically.
 exports.initiateKhaltiPayment = async (req, res) => {
     try {
-        const { bookingId, amount, hospitalName, wardType, userName, userEmail } = req.body;
+        const { bookingId, amount, hospitalName, wardType, userName, userEmail, userPhone } = req.body;
         if (!bookingId || !amount)
             return res.status(400).json({ success: false, message: "bookingId and amount are required" });
 
@@ -151,7 +151,7 @@ exports.initiateKhaltiPayment = async (req, res) => {
         const response = await axios.post(
             'https://a.khalti.com/api/v2/epayment/initiate/',
             {
-                return_url: (process.env.NGROK_URL || 'https://YOUR_NGROK_URL.ngrok-free.app') + '/payment/callback',
+                return_url: (process.env.NGROK_URL || 'dandy-dealmaker-issuing.ngrok-free.dev ') + '/payment/callback',
                 website_url: "https://swiftward.com.np",
                 amount: amount,
                 purchase_order_id: bookingId,
@@ -159,7 +159,7 @@ exports.initiateKhaltiPayment = async (req, res) => {
                 customer_info: {
                     name: userName || "Patient",
                     email: userEmail || "patient@swiftward.com",
-                    phone: "9800000001"
+                    phone: userPhone || "9800000000"  // user's real phone from session
                 }
             },
             {
@@ -170,7 +170,15 @@ exports.initiateKhaltiPayment = async (req, res) => {
             }
         );
 
-        console.log(`✅ Khalti payment initiated: pidx=${response.data.pidx}`);
+        console.log(`
+⏳ KHALTI PAYMENT INITIATED — waiting for user to pay
+   pidx      : ${response.data.pidx}
+   booking   : ${bookingId}
+   amount    : Rs ${amount/100}
+   customer  : ${userName} (${userPhone || 'no phone'})
+   pay URL   : ${response.data.payment_url}
+   (Terminal will show ✅ box after user pays and verify is called)
+`);
         res.status(200).json({
             success: true,
             data: {
@@ -207,10 +215,30 @@ exports.verifyKhaltiPayment = async (req, res) => {
         const isCompleted = pd.status === 'Completed';
         console.log(`💳 Khalti verify: pidx=${pidx} status=${pd.status}`);
 
-        if (isCompleted && userEmail) {
+        if (isCompleted) {
+            // ── Terminal print ──────────────────────────────────────────
+            console.log(`
+╔══════════════════════════════════════════════════════════╗
+║           ✅  SWIFTWARD PAYMENT SUCCESSFUL               ║
+╠══════════════════════════════════════════════════════════╣
+║  Patient  : ${(userName || 'Unknown').padEnd(44)}║
+║  Booking  : ${(bookingId || 'N/A').padEnd(44)}║
+║  Hospital : ${(hospitalName || 'N/A').padEnd(44)}║
+║  Ward     : ${(wardType || 'N/A').padEnd(44)}║
+║  Amount   : Rs 300${' '.repeat(41)}║
+║  Txn ID   : ${(pd.transaction_id || pidx || 'N/A').toString().slice(0,44).padEnd(44)}║
+╚══════════════════════════════════════════════════════════╝`);
+
+            // ── Send confirmation email to YOUR Resend account email ────
+            // Resend free tier: onboarding@resend.dev can ONLY send to the
+            // email you used to sign up at resend.com (hardcoded below).
+            // Change this to YOUR actual Resend account email:
+            const RESEND_OWNER_EMAIL = 'anita.pathak2062@gmail.com';
+
             try {
-                await resend.emails.send({
-                    from: 'onboarding@resend.dev', to: userEmail,
+                const emailResult = await resend.emails.send({
+                    from: 'onboarding@resend.dev',
+                    to: RESEND_OWNER_EMAIL,
                     subject: '✅ SwiftWard — Payment Successful & Bed Reserved!',
                     html: `<div style="font-family:Arial;max-width:520px;margin:0 auto">
                       <div style="background:#1A3668;padding:24px;border-radius:8px 8px 0 0;text-align:center">
@@ -235,7 +263,9 @@ exports.verifyKhaltiPayment = async (req, res) => {
                         </div>
                       </div></div>`
                 });
-            } catch (e) { console.error("Confirmation email failed:", e.message); }
+            } catch (emailErr) {
+                console.error('❌ Confirmation email failed:', emailErr?.message || emailErr);
+            }
         }
 
         res.status(200).json({

@@ -134,7 +134,8 @@ data class KhaltiInitiateRequest(
     val hospitalName: String,
     val wardType: String,
     val userName: String,
-    val userEmail: String
+    val userEmail: String,
+    val userPhone: String = ""  // sent to Khalti customer_info
 )
 
 data class KhaltiInitiateResponse(

@@ -18,13 +18,15 @@ import com.swiftward.utils.SessionManager
 fun NavGraph(
     navController: NavHostController = rememberNavController(),
     sessionManager: SessionManager,
-    khaltiCallbackIntent: Intent? = null
+    khaltiCallbackIntent: Intent? = null,
+    navigateToHome: Boolean = false
 ) {
     val bookingViewModel: BookingViewModel = hiltViewModel()
     val uiState    by bookingViewModel.uiState.collectAsState()
     val isLoggedIn by sessionManager.isLoggedIn.collectAsState(initial = null)
     val userPhone  by sessionManager.userPhone.collectAsState(initial = "")
     val userName   by sessionManager.userName.collectAsState(initial = "")
+    val userEmail  by sessionManager.userEmail.collectAsState(initial = "")
 
     if (isLoggedIn == null) return   // wait for DataStore
 
@@ -139,6 +141,7 @@ fun NavGraph(
             ProfileScreen(
                 userName  = userName ?: "",
                 userPhone = userPhone ?: "",
+                userEmail = userEmail ?: "",
                 onBack    = { navController.popBackStack() },
                 onHospitalsClick = {
                     navController.navigate(Screen.Hospitals.route) {
@@ -185,7 +188,10 @@ fun NavGraph(
                         phone = "01-4221111", isOpen24x7 = true, wards = emptyList()
                     )
                     bookingViewModel.submitBooking(request = request, hospital = hospital)
-                    val bookingId = uiState.booking?.bookingId ?: "SW-PENDING"
+                    // bookingId is set synchronously inside submitBooking (in-memory)
+                    // uiState.booking is updated before this lambda returns
+                    val bookingId = bookingViewModel.uiState.value.booking?.bookingId
+                        ?: "SW-${System.currentTimeMillis().toString().takeLast(6)}"
                     navController.navigate("payment_screen/$bookingId/$hospitalId")
                 }
             )

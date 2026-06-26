@@ -30,19 +30,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!--
-                Our Express /payment/callback page redirects to swiftward://payment/callback
-                Android intercepts this custom scheme and opens MainActivity.
-                No domain ownership required — custom schemes work with no verification.
-            -->
+            <!-- Khalti payment callback: swiftward://payment/callback -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="swiftward"
-                    android:host="payment"
-                    android:path="/callback" />
+                <data android:scheme="swiftward" android:host="payment" android:path="/callback" />
+            </intent-filter>
+
+            <!-- "Return to SwiftWard" button on callback page: swiftward://home -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="swiftward" android:host="home" />
             </intent-filter>
         </activity>
     </application>
