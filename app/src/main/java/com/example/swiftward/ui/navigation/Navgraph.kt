@@ -181,7 +181,9 @@ fun NavGraph(
                 hospitalId = hospitalId,
                 onBack     = { navController.popBackStack() },
                 onBookingConfirmed = { request ->
-                    val hospital = Hospital(
+                    val realHospital = com.example.swiftward.data.local.MockData.getAll()
+                        .find { it.id == hospitalId }
+                    val hospital = realHospital ?: Hospital(
                         id = hospitalId, name = "Selected Hospital",
                         address = "Kathmandu, Nepal",
                         latitude = 27.7000, longitude = 85.3200,
